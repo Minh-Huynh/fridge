@@ -1,14 +1,23 @@
 -module(fridge).
 -compile(export_all).
--record(state, {server, inside = []}).
+%'server' is the Pid of the server, in this case it will always be self
+-record(state, {server, inside = maps:new()}).
 
-start() ->
-    spawn(?MODULE, loop, []).
+start(Pid) ->
+    spawn(?MODULE, loop, [#state{server=Pid, inside=[]}]).
 
-loop() ->
+loop(S = #state{server=Server}) ->
     receive
-        {put_in, Name, expiration} ->;
-        {take_out, Name} ->;
-        {list_food} -> ;
-    after 5000 ->;
+        {put_in, Name, SecondsToExpiration} ->
+            Ref = food:start(Name, SecondsToExpiration),
+            maps:put(Name, Ref, #state.inside);
+        {take_out, Name} ->
+            Pid = maps:get(Name, #state.inside),
+            Ref = erlang:monitor(process, Pid),
+            Pid ! {self(), Ref, cancel},
+            maps:remove(Name, #state.inside);
+        {list_food} -> 
+            io:format("~p~n", maps:keys(#state.inside))
     end.
+
+
