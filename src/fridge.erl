@@ -1,23 +1,32 @@
 -module(fridge).
 -compile(export_all).
-%'server' is the Pid of the server, in this case it will always be self
--record(state, {server, inside = maps:new()}).
+-record(state, {inside}).
 
-start(Pid) ->
-    spawn(?MODULE, loop, [#state{server=Pid, inside=[]}]).
+start() ->
+    spawn(?MODULE, init, []).
 
-loop(S = #state{server=Server}) ->
+init() ->
+    loop(#state{inside=maps:new()}).
+
+loop(State) ->
     receive
         {put_in, Name, SecondsToExpiration} ->
             Ref = food:start(Name, SecondsToExpiration),
-            maps:put(Name, Ref, #state.inside);
+            NewInside = maps:put(Name, Ref, State#state.inside),
+            io:format("Food put in: ~p~n", [Name]),
+            State#state{inside=NewInside},
+            loop(State);
         {take_out, Name} ->
-            Pid = maps:get(Name, #state.inside),
+            Pid = maps:get(Name, State#state.inside),
             Ref = erlang:monitor(process, Pid),
             Pid ! {self(), Ref, cancel},
-            maps:remove(Name, #state.inside);
+            maps:remove(Name, State#state.inside),
+            io:format("Food taken out: ~p~n", [Name]),
+            loop(State);
         {list_food} -> 
-            io:format("~p~n", maps:keys(#state.inside))
+            %%Currently having trouble inserting values into state record
+            io:format("~p~n", maps:keys(State#state.inside)),
+            loop(State)
     end.
 
 
