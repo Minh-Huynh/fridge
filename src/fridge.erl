@@ -7,26 +7,32 @@ start() ->
 
 init() ->
     loop(#state{inside=maps:new()}).
-
+%food expiration isn't working!!
 loop(State) ->
     receive
         {put_in, Name, SecondsToExpiration} ->
             Ref = food:start(Name, SecondsToExpiration),
             NewInside = maps:put(Name, Ref, State#state.inside),
             io:format("Food put in: ~p~n", [Name]),
-            State#state{inside=NewInside},
-            loop(State);
+            NewState = #state{inside=NewInside},
+            loop(NewState);
         {take_out, Name} ->
             Pid = maps:get(Name, State#state.inside),
             Ref = erlang:monitor(process, Pid),
             Pid ! {self(), Ref, cancel},
-            maps:remove(Name, State#state.inside),
+            NewInside = maps:remove(Name, State#state.inside),
             io:format("Food taken out: ~p~n", [Name]),
-            loop(State);
+            NewState = #state{inside=NewInside},
+            loop(NewState);
         {list_food} -> 
-            %%Currently having trouble inserting values into state record
-            io:format("~p~n", maps:keys(State#state.inside)),
+            print_list(maps:keys(State#state.inside)),
+            timer:sleep(1000),
             loop(State)
     end.
 
+print_list([H|T]) ->
+    io:format("~p~n", [H]),
+    print_list(T);
+print_list([]) ->
+    [].
 
