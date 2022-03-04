@@ -7,7 +7,6 @@ start() ->
 
 init() ->
     loop(#state{inside=maps:new()}).
-%food expiration isn't working!!
 loop(State) ->
     receive
         {put_in, Name, SecondsToExpiration} ->
@@ -26,8 +25,13 @@ loop(State) ->
             loop(NewState);
         {list_food} -> 
             print_list(maps:keys(State#state.inside)),
-            timer:sleep(1000),
-            loop(State)
+            io:format(State#state.inside),
+            loop(State);
+        {done, Name} ->
+            NewInside = maps:remove(Name, State#state.inside),
+            NewState = #state{inside=NewInside},
+            io:format("Food expired: ~p~n", [Name]),
+            loop(NewState)
     end.
 
 print_list([H|T]) ->

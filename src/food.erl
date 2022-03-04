@@ -3,8 +3,9 @@
 -record(state, {server, name, expire_seconds}).
 
 start(Name, Seconds) ->
-    spawn(?MODULE, init, [self(),Name, Seconds]).
+    spawn(?MODULE, food_loop, [#state{server=self(), name=Name, expire_seconds=Seconds}]).
 
+%interface for fridge to use
 cancel(Pid) ->
     %trick: using monitor to see if process is dead
     Ref = erlang:monitor(process, Pid),
@@ -20,10 +21,7 @@ cancel(Pid) ->
             ok
     end.
 
-
-init(Server, Name, Seconds) ->
-    spawn(?MODULE, food_loop, [#state{server=Server, name=Name, expire_seconds=Seconds}]).
-
+%main food process
 food_loop(State) ->
     receive
         {Pid, Ref, cancel} ->
@@ -33,5 +31,6 @@ food_loop(State) ->
             %the server know we heard it, and the Ref is the match the message
             Pid ! {Ref, ok}
     after State#state.expire_seconds * 1000 ->
+        io:format("~p expired!~n", [State#state.name]),
         State#state.server ! {done, State#state.name}
     end.
