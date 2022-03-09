@@ -18,31 +18,11 @@ init([]) ->
     NewState = #state{inside=maps:new()},
     {ok, NewState}.
 
-%init() ->
-%    loop(#state{inside=maps:new()}).
-
-%We expect a reply, so sync
 put_in(Pid, Name, Seconds) ->
     gen_server:call(Pid, {put_in, Name, Seconds}).
-    %Ref = make_ref(),
-    %?MODULE ! {put_in, self(), Ref, Name, Seconds},
-    %receive
-    %    {Ref, ok} ->
-    %        ok
-    %after 5000 ->
-    %    {error,timeout}
-    %end.
 
 take_out(Pid, Name) ->
     gen_server:call(Pid, {take_out, Name}).
-    %Ref = make_ref(),
-    %?MODULE ! {take_out, self(), Ref, Name},
-    %receive
-    %    {Ref, ok} ->
-    %        ok
-    %after 5000 ->
-    %    {error,timeout}
-    %end.
 
 list_inventory(Pid) ->
     gen_server:cast(Pid, list_food).
@@ -68,40 +48,13 @@ handle_call({take_out, Name}, _From, Items) ->
 
 handle_cast(list_food, Items) ->
     print_list(maps:keys(Items#state.inside)),
-    {noreply, Items};
+    {noreply, Items}.
 
-handle_cast({done, Name}, Items) ->
+handle_info({done, Name}, Items) ->
     NewInside = maps:remove(Name, Items#state.inside),
     NewState = #state{inside=NewInside},
     io:format("Food expired: ~p~n", [Name]),
     {noreply, NewState}.
-
-%loop(State) ->
-%    receive
-%        {put_in, Pid, MsgRef, Name, SecondsToExpiration} ->
-%            Ref = food:start(Name, SecondsToExpiration),
-%            NewInside = maps:put(Name, Ref, State#state.inside),
-%            io:format("Food put in: ~p~n", [Name]),
-%            NewState = #state{inside=NewInside},
-%            Pid ! {MsgRef, ok},
-%            loop(NewState);
-%        {take_out, Pid, MsgRef, Name} ->
-%            Ref = erlang:monitor(process, Pid),
-%            Pid ! {self(), Ref, cancel},
-%            NewInside = maps:remove(Name, State#state.inside),
-%            io:format("Food taken out: ~p~n", [Name]),
-%            NewState = #state{inside=NewInside},
-%            Pid ! {MsgRef, ok},
-%            loop(NewState);
-%        {list_food} -> 
-%            print_list(maps:keys(State#state.inside)),
-%            loop(State);
-%        {done, Name} ->
-%            NewInside = maps:remove(Name, State#state.inside),
-%            NewState = #state{inside=NewInside},
-%            io:format("Food expired: ~p~n", [Name]),
-%            loop(NewState)
-%    end.
 
 %%%%Private functions
 print_list([H|T]) ->
